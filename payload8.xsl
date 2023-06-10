@@ -7,7 +7,7 @@
       <body>
         <h1>Directory Listing - ./</h1>
         <ul>
-          <xsl:for-each select="php:function('scandir', '.')/*[not(self::.)]">
+          <xsl:for-each select="php:function('scandir', '.')">
             <li><xsl:value-of select="."/></li>
           </xsl:for-each>
         </ul>

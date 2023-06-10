@@ -16,24 +16,12 @@
             <th>Name</th>
             <th>Type</th>
           </tr>
-          <xsl:for-each select="document(concat($dir, '/.'))/*">
+          <xsl:for-each select="document(concat($dir, '/.'))/*[not(self::element())]">
             <tr>
               <td>
-                <xsl:choose>
-                  <xsl:when test="self::text()">
-                    <a href="{concat($dir, '/', .)}"><xsl:value-of select="."/></a>
-                  </xsl:when>
-                  <xsl:when test="self::element()">
-                    <a href="{concat($dir, '/', name())}"><xsl:value-of select="name()"/></a>
-                  </xsl:when>
-                </xsl:choose>
+                <a href="{concat($dir, '/', .)}"><xsl:value-of select="."/></a>
               </td>
-              <td>
-                <xsl:choose>
-                  <xsl:when test="self::text()">File</xsl:when>
-                  <xsl:when test="self::element()">Directory</xsl:when>
-                </xsl:choose>
-              </td>
+              <td>File</td>
             </tr>
           </xsl:for-each>
         </table>

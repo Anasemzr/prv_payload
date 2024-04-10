@@ -1,10 +1,27 @@
 func (t *Tunnel) handleSocks(src io.ReadWriteCloser) error {
-    // Connect to your SOCKS5 proxy server
-    proxyConn, err := net.Dial("tcp", "proxy.example.com:1080") // Replace with your proxy server address
+    // Connect to your proxy server
+    proxyConn, err := net.Dial("tcp", "proxy.example.com:8080") // Replace with your proxy server address and port
     if err != nil {
         return err
     }
     defer proxyConn.Close()
+
+    // Perform proxy authentication if required
+    // Replace "username" and "password" with your actual credentials
+    _, err = proxyConn.Write([]byte("CONNECT example.com:443 HTTP/1.1\r\n" +
+        "Host: example.com:443\r\n" +
+        "Proxy-Authorization: Basic " + base64.StdEncoding.EncodeToString([]byte("username:password")) + "\r\n" +
+        "\r\n"))
+    if err != nil {
+        return err
+    }
+
+    // Read the response from the proxy server
+    response := make([]byte, 1024)
+    _, err = proxyConn.Read(response)
+    if err != nil {
+        return err
+    }
 
     // Forward data between source and proxy
     go func() {

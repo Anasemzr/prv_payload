@@ -2,6 +2,10 @@ func main() {
     // Proxy server address and port
     proxyAddr := "proxy.example.com:8080" // Replace with your proxy server address and port
 
+    // Proxy server credentials
+    username := "your_username"           // Replace with your proxy username
+    password := "your_password"           // Replace with your proxy password
+
     // Create a connection to the proxy server
     proxyConn, err := net.Dial("tcp", proxyAddr)
     if err != nil {
@@ -10,9 +14,13 @@ func main() {
     }
     defer proxyConn.Close()
 
-    // Send the domain to the proxy server
+    // Encode the username and password for Basic Authentication
+    credentials := username + ":" + password
+    encodedCredentials := base64.StdEncoding.EncodeToString([]byte(credentials))
+
+    // Send the domain to the proxy server with Basic Authentication
     domain := "example.com" // Replace with the domain you want to send
-    _, err = fmt.Fprintf(proxyConn, "GET / HTTP/1.1\r\nHost: %s\r\n\r\n", domain)
+    _, err = fmt.Fprintf(proxyConn, "GET / HTTP/1.1\r\nHost: %s\r\nProxy-Authorization: Basic %s\r\n\r\n", domain, encodedCredentials)
     if err != nil {
         fmt.Println("Error sending domain to proxy server:", err)
         return
@@ -28,3 +36,4 @@ func main() {
         }
         fmt.Print(line)
     }
+}

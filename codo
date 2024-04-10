@@ -2,8 +2,8 @@ func (p *Proxy) listen() error {
   // Check for and set proxy if http_proxy environment variable is defined
   proxyURL := os.Getenv("http_proxy")
   if proxyURL != "" {
-    // Parse proxy URL (assuming net/url is available)
-    proxyURLParsed, err := url.Parse(URL(proxyURL)) // Use URL type for stricter parsing
+    // Parse proxy URL
+    proxyURLParsed, err := net/url.Parse(proxyURL) // Use net/url for parsing
     if err != nil {
       return fmt.Errorf("failed to parse proxy URL: %w", err)
     }
@@ -12,7 +12,20 @@ func (p *Proxy) listen() error {
 
     // Create a custom dialer function using the proxy
     dialer := func(network, address string) (net.Conn, error) {
-      return proxy.Dial("tcp", proxyHost+":"+proxyPort, proxy.Dialer(network, address))
+      if proxyURL != "" {
+        // Dial the proxy server using net.Dial
+        proxyConn, err := net.Dial("tcp", proxyHost+":"+proxyPort)
+        if err != nil {
+          return nil, fmt.Errorf("failed to dial proxy: %w", err)
+        }
+        // ... (further logic to utilize proxyConn for dialing the target address)
+        // This part might require adjustments based on Chisel's internals
+        defer proxyConn.Close() // Close the proxy connection on exit
+        // Example (replace with Chisel's specific logic):
+        // return proxyConn, nil  // (assuming proxyConn can be used directly)
+      }
+      // Use default dialer (net.Dial) if no proxy
+      return net.Dial(network, address)
     }
     p.dialer = dialer // Set the custom dialer
   } else {

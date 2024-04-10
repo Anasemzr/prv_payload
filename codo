@@ -1,65 +1,34 @@
-func (p *Proxy) listen() error {
-  // Check for and set proxy if http_proxy environment variable is defined
-  proxyURL := os.Getenv("http_proxy")
-  if proxyURL != "" {
-    // Parse proxy URL
-    proxyURLParsed, err := net/url.Parse(proxyURL) // Use net/url for parsing
+func (t *Tunnel) handleSocks(src io.ReadWriteCloser) error {
+  // Check for proxy configuration (optional)
+  if t.proxyURL != "" {
+    // Parse the proxy URL
+    proxyURLParsed, err := url.Parse(t.proxyURL)
     if err != nil {
       return fmt.Errorf("failed to parse proxy URL: %w", err)
     }
     proxyHost := proxyURLParsed.Hostname()
     proxyPort := proxyURLParsed.Port()
 
-    // Create a custom dialer function using the proxy
+    // Create a custom dialer that uses the proxy for DNS resolution
     dialer := func(network, address string) (net.Conn, error) {
-      if proxyURL != "" {
-        // Dial the proxy server using net.Dial
-        proxyConn, err := net.Dial("tcp", proxyHost+":"+proxyPort)
-        if err != nil {
-          return nil, fmt.Errorf("failed to dial proxy: %w", err)
-        }
-        // ... (further logic to utilize proxyConn for dialing the target address)
-        // This part might require adjustments based on Chisel's internals
-        defer proxyConn.Close() // Close the proxy connection on exit
-        // Example (replace with Chisel's specific logic):
-        // return proxyConn, nil  // (assuming proxyConn can be used directly)
+      // Dial the proxy server
+      proxyConn, err := net.Dial("tcp", proxyHost+":"+proxyPort)
+      if err != nil {
+        return nil, fmt.Errorf("failed to dial proxy: %w", err)
       }
-      // Use default dialer (net.Dial) if no proxy
-      return net.Dial(network, address)
+      defer proxyConn.Close() // Close the proxy connection on exit
+
+      // Wrap the proxy connection for SOCKS5 communication (implementation depends on Chisel internals)
+      wrappedConn := WrapProxyConnForSOCKS5(proxyConn, src) // Replace with Chisel's specific logic
+
+      // Use the wrapped connection for further communication
+      return wrappedConn, nil
     }
-    p.dialer = dialer // Set the custom dialer
-  } else {
-    p.dialer = net.Dialer{} // Use default dialer if no proxy
+
+    // Set the custom dialer for the SOCKS5 server
+    t.socksServer.Dialer = dialer
   }
 
-  if p.remote.Stdio {
-    //TODO check if pipes active?
-  } else if p.remote.LocalProto == "tcp" {
-    addr, err := net.ResolveTCPAddr("tcp", p.remote.LocalHost+":"+p.remote.LocalPort)
-    if err != nil {
-      return p.Errorf("resolve: %s", err)
-    }
-    // Use the custom dialer (if set) for dialing the listener
-    var l net.Listener
-    if dialer != nil {
-      l, err = net.ListenTCP("tcp", addr, dialer)
-    } else {
-      l, err = net.ListenTCP("tcp", addr)
-    }
-    if err != nil {
-      return p.Errorf("tcp: %s", err)
-    }
-    p.Infof("Listening")
-    p.tcp = l
-  } else if p.remote.LocalProto == "udp" {
-    l, err := listenUDP(p.Logger, p.sshTun, p.remote)
-    if err != nil {
-      return err
-    }
-    p.Infof("Listening")
-    p.udp = l
-  } else {
-    return p.Errorf("unknown local proto")
-  }
-  return nil
+  // Call the original handleSocks with the potentially modified SOCKS5 server
+  return t.socksServer.ServeConn(cnet.NewRWCConn(src))
 }

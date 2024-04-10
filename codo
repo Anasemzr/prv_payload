@@ -6,12 +6,9 @@ func (p *Proxy) listen() error {
     if err != nil {
       return fmt.Errorf("failed to parse proxy URL: %w", err)
     }
-    // Create a custom dialer function using the proxy
-    dialer := func(network, address string) (net.Conn, error) {
-      return proxy.Dial("tcp", "localhost:http", proxy.Dialer(network, address))
-    }
-  } else {
-    dialer = nil // No proxy, use default dialer
+    // Create a custom http client with the proxy
+    client := &http.Client{Transport: &http.Transport{Proxy: proxy}}
+    p.client = client // Store the custom client in your Proxy struct
   }
 
   if p.remote.Stdio {
@@ -21,13 +18,7 @@ func (p *Proxy) listen() error {
     if err != nil {
       return p.Errorf("resolve: %s", err)
     }
-    // Use the custom dialer (if set) for dialing the listener
-    var l net.Listener
-    if dialer != nil {
-      l, err = net.ListenTCP("tcp", addr, dialer)
-    } else {
-      l, err = net.ListenTCP("tcp", addr)
-    }
+    l, err := net.ListenTCP("tcp", addr)
     if err != nil {
       return p.Errorf("tcp: %s", err)
     }

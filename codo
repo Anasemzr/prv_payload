@@ -1,3 +1,13 @@
+package main
+
+import (
+    "bufio"
+    "encoding/base64"
+    "fmt"
+    "net"
+    "os"
+)
+
 func main() {
     // Proxy server address and port
     proxyAddr := "proxy.example.com:8080" // Replace with your proxy server address and port

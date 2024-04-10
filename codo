@@ -1,38 +1,30 @@
-func (t *Tunnel) handleSocks(src io.ReadWriteCloser) error {
-  if t.Proxy == nil {
-    // Default behavior: use internal DNS server
-    return t.socksServer.ServeConn(cnet.NewRWCConn(src))
-  }
+func main() {
+    // Proxy server address and port
+    proxyAddr := "proxy.example.com:8080" // Replace with your proxy server address and port
 
-  // Use proxy server for DNS resolution
-  return t.handleSocksWithProxy(src, t.Proxy)
-}
+    // Create a connection to the proxy server
+    proxyConn, err := net.Dial("tcp", proxyAddr)
+    if err != nil {
+        fmt.Println("Error connecting to proxy server:", err)
+        return
+    }
+    defer proxyConn.Close()
 
-func (t *Tunnel) handleSocksWithProxy(src io.ReadWriteCloser, proxy *Tunnel.Proxy) error {
-  // Create a proxy object with username and password
-  proxyURL, err := url.Parse(fmt.Sprintf("http://%s:%s@%s", proxy.Username, proxy.Password, proxy.Host))
-  if err != nil {
-    return err
-  }
+    // Send the domain to the proxy server
+    domain := "example.com" // Replace with the domain you want to send
+    _, err = fmt.Fprintf(proxyConn, "GET / HTTP/1.1\r\nHost: %s\r\n\r\n", domain)
+    if err != nil {
+        fmt.Println("Error sending domain to proxy server:", err)
+        return
+    }
 
-  // Create authenticated proxy object
-  proxyAuth := proxy.AuthCache()
-  transport := &http.Transport{
-    Proxy: http.ProxyURL(proxyURL),
-    ProxyAuth: proxyAuth,
-  }
-
-  // Create a SOCKS5 dialer using the authenticated transport
-  dialer := &net.Dialer{
-    Proxy: func(network, addr string) (net.Conn, error) {
-      return transport.Dial(network, addr)
-    },
-  }
-
-  // Wrap the socksServer with a ProxySOCKS server using the authenticated dialer
-  proxySocks := cnet.NewProxySOCKS(t.socksServer, dialer)
-
-  // Serve the connection using the proxy-aware SOCKS server
-  return proxySocks.ServeConn(cnet.NewRWCConn(src))
-}
-
+    // Read and print the response from the proxy server
+    reader := bufio.NewReader(proxyConn)
+    for {
+        line, err := reader.ReadString('\n')
+        if err != nil {
+            fmt.Println("Error reading response from proxy server:", err)
+            return
+        }
+        fmt.Print(line)
+    }

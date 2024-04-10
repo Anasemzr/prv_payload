@@ -1,36 +1,20 @@
 func (t *Tunnel) handleSocks(src io.ReadWriteCloser) error {
-    // Connect to your proxy server
-    proxyConn, err := net.Dial("tcp", "proxy.example.com:8080") // Replace with your proxy server address and port
-    if err != nil {
-        return err
-    }
-    defer proxyConn.Close()
+  if t.Proxy == nil {
+    // Default behavior: use internal DNS server
+    return t.socksServer.ServeConn(cnet.NewRWCConn(src))
+  }
 
-    // Perform proxy authentication if required
-    // Replace "username" and "password" with your actual credentials
-    _, err = proxyConn.Write([]byte("CONNECT example.com:443 HTTP/1.1\r\n" +
-        "Host: example.com:443\r\n" +
-        "Proxy-Authorization: Basic " + base64.StdEncoding.EncodeToString([]byte("username:password")) + "\r\n" +
-        "\r\n"))
-    if err != nil {
-        return err
-    }
+  // Use proxy server for DNS resolution
+  return t.handleSocksWithProxy(src, t.Proxy)
+}
 
-    // Read the response from the proxy server
-    response := make([]byte, 1024)
-    _, err = proxyConn.Read(response)
-    if err != nil {
-        return err
-    }
+func (t *Tunnel) handleSocksWithProxy(src io.ReadWriteCloser, proxy *net.Proxy) error {
+  // Create a SOCKS5 dialer using the proxy
+  dialer := &net.Dialer{Proxy: proxy}
 
-    // Forward data between source and proxy
-    go func() {
-        _, _ = io.Copy(proxyConn, src)
-    }()
-    _, err = io.Copy(src, proxyConn)
-    if err != nil {
-        return err
-    }
+  // Wrap the SOCKS server with a Proxy SOCKS server
+  proxySocks := cnet.NewProxySOCKS(t.socksServer, dialer)
 
-    return nil
+  // Serve the connection using the proxy-aware SOCKS server
+  return proxySocks.ServeConn(cnet.NewRWCConn(src))
 }

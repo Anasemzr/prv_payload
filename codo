@@ -8,13 +8,31 @@ func (t *Tunnel) handleSocks(src io.ReadWriteCloser) error {
   return t.handleSocksWithProxy(src, t.Proxy)
 }
 
-func (t *Tunnel) handleSocksWithProxy(src io.ReadWriteCloser, proxy *net.Proxy) error {
-  // Create a SOCKS5 dialer using the proxy
-  dialer := &net.Dialer{Proxy: proxy}
+func (t *Tunnel) handleSocksWithProxy(src io.ReadWriteCloser, proxy *Tunnel.Proxy) error {
+  // Create a proxy object with username and password
+  proxyURL, err := url.Parse(fmt.Sprintf("http://%s:%s@%s", proxy.Username, proxy.Password, proxy.Host))
+  if err != nil {
+    return err
+  }
 
-  // Wrap the SOCKS server with a Proxy SOCKS server
+  // Create authenticated proxy object
+  proxyAuth := proxy.AuthCache()
+  transport := &http.Transport{
+    Proxy: http.ProxyURL(proxyURL),
+    ProxyAuth: proxyAuth,
+  }
+
+  // Create a SOCKS5 dialer using the authenticated transport
+  dialer := &net.Dialer{
+    Proxy: func(network, addr string) (net.Conn, error) {
+      return transport.Dial(network, addr)
+    },
+  }
+
+  // Wrap the socksServer with a ProxySOCKS server using the authenticated dialer
   proxySocks := cnet.NewProxySOCKS(t.socksServer, dialer)
 
   // Serve the connection using the proxy-aware SOCKS server
   return proxySocks.ServeConn(cnet.NewRWCConn(src))
 }
+

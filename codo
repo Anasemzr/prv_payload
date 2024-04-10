@@ -1,34 +1,19 @@
 func (t *Tunnel) handleSocks(src io.ReadWriteCloser) error {
-  // Check for proxy configuration (optional)
-  if t.proxyURL != "" {
-    // Parse the proxy URL
-    proxyURLParsed, err := url.Parse(t.proxyURL)
+    // Connect to your SOCKS5 proxy server
+    proxyConn, err := net.Dial("tcp", "proxy.example.com:1080") // Replace with your proxy server address
     if err != nil {
-      return fmt.Errorf("failed to parse proxy URL: %w", err)
+        return err
     }
-    proxyHost := proxyURLParsed.Hostname()
-    proxyPort := proxyURLParsed.Port()
+    defer proxyConn.Close()
 
-    // Create a custom dialer that uses the proxy for DNS resolution
-    dialer := func(network, address string) (net.Conn, error) {
-      // Dial the proxy server
-      proxyConn, err := net.Dial("tcp", proxyHost+":"+proxyPort)
-      if err != nil {
-        return nil, fmt.Errorf("failed to dial proxy: %w", err)
-      }
-      defer proxyConn.Close() // Close the proxy connection on exit
-
-      // Wrap the proxy connection for SOCKS5 communication (implementation depends on Chisel internals)
-      wrappedConn := WrapProxyConnForSOCKS5(proxyConn, src) // Replace with Chisel's specific logic
-
-      // Use the wrapped connection for further communication
-      return wrappedConn, nil
+    // Forward data between source and proxy
+    go func() {
+        _, _ = io.Copy(proxyConn, src)
+    }()
+    _, err = io.Copy(src, proxyConn)
+    if err != nil {
+        return err
     }
 
-    // Set the custom dialer for the SOCKS5 server
-    t.socksServer.Dialer = dialer
-  }
-
-  // Call the original handleSocks with the potentially modified SOCKS5 server
-  return t.socksServer.ServeConn(cnet.NewRWCConn(src))
+    return nil
 }

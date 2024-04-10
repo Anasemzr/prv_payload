@@ -47,3 +47,56 @@ func main() {
         fmt.Print(line)
     }
 }
+
+
+
+package main
+
+import (
+    "fmt"
+    "net/http"
+    "net/url"
+)
+
+func main() {
+    // Proxy server address and port
+    proxyURL := "http://proxy.example.com:8080" // Replace with your proxy server address and port
+
+    // Proxy server credentials
+    username := "your_username"                // Replace with your proxy username
+    password := "your_password"                // Replace with your proxy password
+
+    // Create a new HTTP client
+    client := &http.Client{
+        Transport: &http.Transport{
+            Proxy: http.ProxyURL(&url.URL{
+                Scheme: "http",
+                Host:   proxyURL,
+            }),
+        },
+    }
+
+    // Create a new HTTP request
+    req, err := http.NewRequest("GET", "https://example.com", nil)
+    if err != nil {
+        fmt.Println("Error creating request:", err)
+        return
+    }
+
+    // Set proxy credentials
+    req.SetBasicAuth(username, password)
+
+    // Send the HTTP request using the client
+    resp, err := client.Do(req)
+    if err != nil {
+        fmt.Println("Error sending request:", err)
+        return
+    }
+    defer resp.Body.Close()
+
+    // Print the response status code and body
+    fmt.Println("Response status code:", resp.Status)
+    // Read and print the response body
+    // ...
+}
+

@@ -2,16 +2,21 @@ func (p *Proxy) listen() error {
   // Check for and set proxy if http_proxy environment variable is defined
   proxyURL := os.Getenv("http_proxy")
   if proxyURL != "" {
-    proxy, err := proxy.Parse(URL(proxyURL)) // Use URL type for stricter parsing
+    // Parse proxy URL (assuming net/url is available)
+    proxyURLParsed, err := url.Parse(URL(proxyURL)) // Use URL type for stricter parsing
     if err != nil {
       return fmt.Errorf("failed to parse proxy URL: %w", err)
     }
+    proxyHost := proxyURLParsed.Hostname()
+    proxyPort := proxyURLParsed.Port()
+
     // Create a custom dialer function using the proxy
     dialer := func(network, address string) (net.Conn, error) {
-      return proxy.Dial("tcp", "localhost:http", proxy.Dialer(network, address))
+      return proxy.Dial("tcp", proxyHost+":"+proxyPort, proxy.Dialer(network, address))
     }
+    p.dialer = dialer // Set the custom dialer
   } else {
-    dialer = nil // No proxy, use default dialer
+    p.dialer = net.Dialer{} // Use default dialer if no proxy
   }
 
   if p.remote.Stdio {

